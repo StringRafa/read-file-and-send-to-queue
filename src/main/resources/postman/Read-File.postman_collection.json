@@ -1,0 +1,76 @@
+{
+	"info": {
+		"_postman_id": "e4003e28-2f6a-42c1-8162-3f4caabfb702",
+		"name": "Read-File",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "18219324"
+	},
+	"item": [
+		{
+			"name": "Read File V1",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"type": "file",
+							"src": "/H:/repo-prill/Arquivo-read-file/read-file.txt"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://localhost:8080/read-file/v1",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"read-file",
+						"v1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Read File V2",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"type": "file",
+							"src": "/H:/repo-prill/Arquivo-read-file/read-file.txt"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://localhost:8080/read-file/v2?priority=1",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"read-file",
+						"v2"
+					],
+					"query": [
+						{
+							"key": "priority",
+							"value": "1"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

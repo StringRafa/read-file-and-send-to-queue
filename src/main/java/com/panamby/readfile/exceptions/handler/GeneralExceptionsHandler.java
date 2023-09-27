@@ -13,6 +13,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExc
 
 import com.panamby.readfile.consts.ConstantUtils;
 import com.panamby.readfile.consts.RabbitMQConstants;
+import com.panamby.readfile.exceptions.ReadFileException;
 import com.panamby.readfile.exceptions.dto.ReadFileGeneralDataErrorResponse;
 import com.panamby.readfile.exceptions.dto.ReadFileGeneralErrorResponse;
 import com.panamby.readfile.services.RabbitMQService;
@@ -49,6 +50,18 @@ public class GeneralExceptionsHandler extends ExceptionHandlerExceptionResolver 
 		rabbitMQService.sendMessage(RabbitMQConstants.QUEUE_AUDIT, body);
 		
 		return new ResponseEntity<>(body, HttpStatus.PAYLOAD_TOO_LARGE);
+	}
+
+	@ExceptionHandler(ReadFileException.class)
+	public ResponseEntity<Object> handleReadFileExceptionException(ReadFileException ex,
+			HttpServletRequest request) {
+
+		ReadFileGeneralErrorResponse body = new ReadFileGeneralErrorResponse(
+				new ReadFileGeneralDataErrorResponse("Unprocessable Entity", ex.getMessage(), ConstantUtils.ERROR));
+		
+		rabbitMQService.sendMessage(RabbitMQConstants.QUEUE_AUDIT, body);
+		
+		return new ResponseEntity<>(body, HttpStatus.UNPROCESSABLE_ENTITY);
 	}
 
 }

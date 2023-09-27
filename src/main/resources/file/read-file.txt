@@ -1,3 +1,12 @@
-Computer,890.00
-Iphone,910.00
-Tablet,550.00
+Pedro,Computador
+Ana,Computador
+Joao,Computador
+Pedro,Tablet
+Ana,Tablet
+Joao,Tablet
+Pedro,Geladeira
+Ana,Geladeira
+Joao,Geladeira
+Pedro,Iphone
+Ana,Iphone
+Joao,Iphone

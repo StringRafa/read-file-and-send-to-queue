@@ -13,6 +13,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExc
 
 import com.panamby.readfile.consts.ConstantUtils;
 import com.panamby.readfile.consts.RabbitMQConstants;
+import com.panamby.readfile.exceptions.BacklogManagerTimeOutException;
 import com.panamby.readfile.exceptions.ReadFileException;
 import com.panamby.readfile.exceptions.dto.ReadFileGeneralDataErrorResponse;
 import com.panamby.readfile.exceptions.dto.ReadFileGeneralErrorResponse;
@@ -62,6 +63,18 @@ public class GeneralExceptionsHandler extends ExceptionHandlerExceptionResolver 
 		rabbitMQService.sendMessage(RabbitMQConstants.QUEUE_AUDIT, body);
 		
 		return new ResponseEntity<>(body, HttpStatus.UNPROCESSABLE_ENTITY);
+	}
+
+	@ExceptionHandler(value = BacklogManagerTimeOutException.class)
+	public ResponseEntity<Object> handleBacklogManagerTimeOutExceptions(BacklogManagerTimeOutException ex,
+			WebRequest webRequest) {
+
+		ReadFileGeneralErrorResponse body = new ReadFileGeneralErrorResponse(
+				new ReadFileGeneralDataErrorResponse("Service Unavailable", ex.getMessage(), ConstantUtils.ERROR));
+
+		rabbitMQService.sendMessage(RabbitMQConstants.QUEUE_AUDIT, body);
+
+		return new ResponseEntity<>(body, HttpStatus.REQUEST_TIMEOUT);
 	}
 
 }

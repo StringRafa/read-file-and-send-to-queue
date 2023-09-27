@@ -39,7 +39,7 @@ public class ReadFileController {
 
 		log.info("Started read file controller V2.");
 		
-		String response = service.sendEmployeeForQueueV2(multipartFile, priority);
+		String response = service.sendSubscribeRequestForQueueV2(multipartFile, priority);
 
 		log.info("Read file controller V2 finished.");
 		

@@ -41,7 +41,12 @@ public class RabbitMQFacctory {
 	public Queue auditQueue() {
 
 		return new Queue(RabbitMQConstants.QUEUE_AUDIT, true);
+	}
+	
+	@Bean
+	public Queue retryForBacklogManagerQueue() {
 
+		return new Queue(RabbitMQConstants.RETRY_QUEUE_FOR_BACKLOG_MANAGER, true);
 	}
 	
 // this is necessary for operations with Spring AMQP

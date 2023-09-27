@@ -12,6 +12,7 @@ import java.util.List;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.core.MessageProperties;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -177,5 +178,13 @@ public class ReadFileService {
 
 			throw new ReadFileException("Unable to convert multiple parts to file.", e);
 		}
+	}
+	
+	@RabbitListener(queues = RabbitMQConstants.RETRY_QUEUE_FOR_BACKLOG_MANAGER)
+	private void consumer(SubscribeRequest subscribeRequest) {
+		
+		System.out.println("=============================");
+		System.out.println(subscribeRequest);
+		System.out.println("=============================");
 	}
 }

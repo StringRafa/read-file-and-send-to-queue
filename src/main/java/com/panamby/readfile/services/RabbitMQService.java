@@ -34,6 +34,19 @@ public class RabbitMQService {
 			log.error(String.format("Unable to send to queue %s.", nameQueue), e);
 		}
     }
+    
+    public void sendMessageNoJson(String nameQueue, Object obj) {
+       
+    	log.info(String.format("Sending message to QUEUE [%s] - MESSAGE [%s]", nameQueue, obj));
+    	
+    	try {
+    		
+			rabbitTemplate.convertAndSend(nameQueue, obj);
+		} catch (AmqpException e) {
+			
+			log.error(String.format("Unable to send to queue %s.", nameQueue), e);
+		}
+    }
 
 	public void sendMessageExchange(String exchange, String routingKey, Object obj) {
 

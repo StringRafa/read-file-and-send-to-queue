@@ -11,6 +11,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
 
 import com.panamby.readfile.consts.RabbitMQConstants;
+import com.panamby.readfile.models.RetryTimeConfig;
 import com.panamby.readfile.models.dto.PropertiesConfigDto;
 import com.panamby.readfile.models.dto.SubscribeRequest;
 import com.panamby.readfile.models.dto.SubscribeResponse;
@@ -76,11 +77,35 @@ public class BacklogManagerService{
 			
 			rabbitMQService.sendMessageNoJson(RabbitMQConstants.RETRY_QUEUE_FOR_BACKLOG_MANAGER, subscribeRequest);
 			
+			int indexCount = 0;
+			Long retryTime = 0L;
 			PropertiesConfigDto propertiesConfig = propertiesConfigService.getPropertiesConfig(propertiesConfigName);
+			RetryTimeConfig retryTimeConfig = priorityConfigService.findByServiceName(propertiesConfigName);
 			
-			propertiesConfig.setBacklogManagerUnavailabilityErrorDate(LocalDateTime.now());
+			if(retryTimeConfig != null) {
+				
+				indexCount = retryTimeConfig.getIndexCount();
+			}
 			
-			propertiesConfigService.update(propertiesConfig, propertiesConfigName);
+	        Long timeDifference = null;
+			
+	        if(propertiesConfig != null && propertiesConfig.getBacklogManagerUnavailabilityErrorDate() != null) {
+
+	            timeDifference = Duration.between(propertiesConfig.getBacklogManagerUnavailabilityErrorDate(), LocalDateTime.now()).getSeconds();
+	            retryTime = propertiesConfig.getRetryTime().get(indexCount);
+	        }
+	        
+	        if(timeDifference != null && timeDifference >= retryTime) {
+	        	
+				propertiesConfig.setBacklogManagerUnavailabilityErrorDate(LocalDateTime.now());
+
+				propertiesConfigService.update(propertiesConfig, propertiesConfigName);
+	        }else if(indexCount == 0 && propertiesConfig.getBacklogManagerUnavailabilityErrorDate() == null) {
+	        	
+				propertiesConfig.setBacklogManagerUnavailabilityErrorDate(LocalDateTime.now());
+
+				propertiesConfigService.update(propertiesConfig, propertiesConfigName);
+	        }
 		}
 		
 		log.trace(String.format("Response of Backlog Manager. ENDPOINT [%s]  SUBSCRIBE_RESPONSE [%s]", endpointBacklogManager, subscribeResponse));

@@ -229,6 +229,11 @@ public class ReadFileService {
 			listenerEndpoint.stop();
 			log.debug("Stopping Retry Backlog Manager listener container.");
 			
+			System.out.println("=============================");
+			System.out.println("Retry Time: " + retryTime);
+			System.out.println("Time Difference: " + timeDifference);
+			System.out.println("=============================");
+			
 		}else {
 		
 			System.out.println("=============================");
@@ -236,9 +241,9 @@ public class ReadFileService {
 			System.out.println("=============================");
 			
 			backlogManagerService.sendSubscriber(subscribeRequest, transactionId);
+	        
+	        priorityConfigService.update(retryTimeConfig, propertiesConfigName);
 		}
-        
-        priorityConfigService.update(retryTimeConfig, propertiesConfigName);
 	}
 
 	@Scheduled(fixedRateString = "${backlog-manager.retry-request.fixedRate.in.milliseconds}")

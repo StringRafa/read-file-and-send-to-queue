@@ -1,6 +1,7 @@
 package com.panamby.readfile.services;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,6 +11,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
 
 import com.panamby.readfile.consts.RabbitMQConstants;
+import com.panamby.readfile.models.dto.PropertiesConfigDto;
 import com.panamby.readfile.models.dto.SubscribeRequest;
 import com.panamby.readfile.models.dto.SubscribeResponse;
 
@@ -26,6 +28,15 @@ public class BacklogManagerService{
 	
 	@Autowired
 	private RabbitMQService rabbitMQService;
+	
+	@Autowired
+	private PropertiesConfigService propertiesConfigService;
+	
+	@Autowired
+	private PriorityConfigService priorityConfigService;
+
+	@Value("${backlog-manager.properties-config.name}")
+	private String propertiesConfigName;
 
 	@Value("${backlog-manager.subscibe.host.url.endpoint}")
 	private String endpointBacklogManager;
@@ -63,14 +74,13 @@ public class BacklogManagerService{
 
 			log.error(String.format("Backlog Manager response time limit [%s]. SUBSCRIBE_REQUEST [%s]", ex.getMessage(), subscribeRequest));
 			
-//			MessageProperties properties = new MessageProperties();
-//			properties.setDelay(600);
-//
-//			Message message = MessageBuilder.withBody(subscribeRequest.toString().getBytes())
-//					.andProperties(properties)//.setContentType("application/json")
-//					.build();
-			
 			rabbitMQService.sendMessageNoJson(RabbitMQConstants.RETRY_QUEUE_FOR_BACKLOG_MANAGER, subscribeRequest);
+			
+			PropertiesConfigDto propertiesConfig = propertiesConfigService.getPropertiesConfig(propertiesConfigName);
+			
+			propertiesConfig.setBacklogManagerUnavailabilityErrorDate(LocalDateTime.now());
+			
+			propertiesConfigService.update(propertiesConfig, propertiesConfigName);
 		}
 		
 		log.trace(String.format("Response of Backlog Manager. ENDPOINT [%s]  SUBSCRIBE_RESPONSE [%s]", endpointBacklogManager, subscribeResponse));

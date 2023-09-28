@@ -9,11 +9,16 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver;
 
 import com.panamby.readfile.consts.ConstantUtils;
 import com.panamby.readfile.consts.RabbitMQConstants;
 import com.panamby.readfile.exceptions.BacklogManagerTimeOutException;
+import com.panamby.readfile.exceptions.MissDataAccessException;
+import com.panamby.readfile.exceptions.PropertiesConfigInsertException;
+import com.panamby.readfile.exceptions.PropertiesConfigNotFoundException;
+import com.panamby.readfile.exceptions.PropertiesConfigUpdateException;
 import com.panamby.readfile.exceptions.ReadFileException;
 import com.panamby.readfile.exceptions.dto.ReadFileGeneralDataErrorResponse;
 import com.panamby.readfile.exceptions.dto.ReadFileGeneralErrorResponse;
@@ -77,4 +82,61 @@ public class GeneralExceptionsHandler extends ExceptionHandlerExceptionResolver 
 		return new ResponseEntity<>(body, HttpStatus.REQUEST_TIMEOUT);
 	}
 
+	@ExceptionHandler(MultipartException.class)
+	public ResponseEntity<Object> handleMultipartException(MultipartException ex, HttpServletRequest request) {
+
+		ReadFileGeneralErrorResponse body = new ReadFileGeneralErrorResponse(
+				new ReadFileGeneralDataErrorResponse("MultipartFile Error", ex.getMessage(), ConstantUtils.FAIL));
+
+		rabbitMQService.sendMessage(RabbitMQConstants.QUEUE_AUDIT, body);
+
+		return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+	}
+
+	@ExceptionHandler(value = MissDataAccessException.class)
+	public ResponseEntity<Object> handleMissDataAccessException(MissDataAccessException ex, WebRequest webRequest) {
+
+		ReadFileGeneralErrorResponse body = new ReadFileGeneralErrorResponse(new ReadFileGeneralDataErrorResponse(
+				"Couldn't Access Database.", ex.getMessage(), ConstantUtils.ERROR));
+
+		rabbitMQService.sendMessage(RabbitMQConstants.QUEUE_AUDIT, body);
+
+		return new ResponseEntity<>(body, HttpStatus.NOT_FOUND);
+	}
+	
+	@ExceptionHandler(value = PropertiesConfigInsertException.class)
+	public ResponseEntity<Object> handlePropertiesConfigInsertException(PropertiesConfigInsertException ex,
+			WebRequest webRequest) {
+
+		ReadFileGeneralErrorResponse body = new ReadFileGeneralErrorResponse(new ReadFileGeneralDataErrorResponse(
+				"Bad Request", ex.getMessage(), ConstantUtils.ERROR));
+
+		rabbitMQService.sendMessage(RabbitMQConstants.QUEUE_AUDIT, body);
+
+		return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+	}
+
+	@ExceptionHandler(value = PropertiesConfigNotFoundException.class)
+	public ResponseEntity<Object> handlePropertiesConfigNotFoundException(PropertiesConfigNotFoundException ex,
+			WebRequest webRequest) {
+		
+		ReadFileGeneralErrorResponse body = new ReadFileGeneralErrorResponse(new ReadFileGeneralDataErrorResponse(
+				"Properties Config isn't in database", ex.getMessage(), ConstantUtils.FAIL));
+
+		rabbitMQService.sendMessage(RabbitMQConstants.QUEUE_AUDIT, body);
+
+		return new ResponseEntity<>(body, HttpStatus.NOT_FOUND);
+	}
+
+	@ExceptionHandler(value = PropertiesConfigUpdateException.class)
+	public ResponseEntity<Object> handlePropertiesConfigUpdateException(PropertiesConfigUpdateException ex,
+			WebRequest webRequest) {
+
+		ReadFileGeneralErrorResponse body = new ReadFileGeneralErrorResponse(new ReadFileGeneralDataErrorResponse(
+				"Request Error", ex.getMessage(), ConstantUtils.ERROR));
+
+		rabbitMQService.sendMessage(RabbitMQConstants.QUEUE_AUDIT, body);
+
+		return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+	}
 }

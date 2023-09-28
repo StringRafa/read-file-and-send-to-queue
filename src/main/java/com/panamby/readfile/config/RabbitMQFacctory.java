@@ -17,6 +17,9 @@ public class RabbitMQFacctory {
 
 	@Autowired
 	private ConnectionFactory rabbitConnectionFactory;
+
+//	@Autowired
+//	private SimpleRabbitListenerContainerFactory factory;
 	
 	// this will create a new queue if it doesn't exist; otherwise, it'll use the existing one of the same name
 
@@ -48,7 +51,17 @@ public class RabbitMQFacctory {
 
 		return new Queue(RabbitMQConstants.RETRY_QUEUE_FOR_BACKLOG_MANAGER, true);
 	}
-	
+
+
+//    @Bean
+//    public RetryOperationsInterceptor interceptor(RabbitTemplate rabbitTemplate) {
+//    	RetryOperationsInterceptor interceptor = RetryInterceptorBuilder.stateless()
+//    			.maxAttempts(1)
+//    			.recoverer(new RepublishMessageRecoverer(rabbitTemplate, null, RabbitMQConstants.RETRY_QUEUE_FOR_BACKLOG_MANAGER))
+//    			.build();
+//    	factory.setAdviceChain(interceptor);
+//    	return interceptor;
+//    }
 // this is necessary for operations with Spring AMQP
 
 	@Bean

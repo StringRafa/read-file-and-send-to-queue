@@ -34,10 +34,10 @@ public class BacklogManagerService{
 	private PropertiesConfigService propertiesConfigService;
 	
 	@Autowired
-	private PriorityConfigService priorityConfigService;
+	private RetryConfigService retryConfigService;
 
-	@Value("${backlog-manager.properties-config.name}")
-	private String propertiesConfigName;
+	@Value("${backlog-manager.service-config.name}")
+	private String configServiceName;
 
 	@Value("${backlog-manager.subscibe.host.url.endpoint}")
 	private String endpointBacklogManager;
@@ -54,6 +54,8 @@ public class BacklogManagerService{
 	public SubscribeResponse sendSubscriber(SubscribeRequest subscribeRequest, String transactionId) {
 		
 		log.trace(String.format("Sending request to Backlog Manager. ENDPOINT [%s] - SUBSCRIBE_REQUEST [%s] - TRANSACTION_ID [%s]", endpointBacklogManager, subscribeRequest, transactionId));
+
+		RetryTimeConfig retryTimeConfig = retryConfigService.findByServiceName(configServiceName);
 		
 		Mono<SubscribeResponse> response = webClientBacklogManager
 				.method(HttpMethod.POST)
@@ -71,6 +73,7 @@ public class BacklogManagerService{
 		try{
 
 			subscribeResponse = response.block(Duration.ofMillis(backlogManagerTimeout));
+			retryConfigService.reset(retryTimeConfig, configServiceName);  
 		}catch(IllegalStateException | WebClientRequestException ex){
 
 			log.error(String.format("Backlog Manager response time limit [%s]. SUBSCRIBE_REQUEST [%s]", ex.getMessage(), subscribeRequest));
@@ -79,8 +82,7 @@ public class BacklogManagerService{
 			
 			int indexCount = 0;
 			Long retryTime = 0L;
-			PropertiesConfigDto propertiesConfig = propertiesConfigService.getPropertiesConfig(propertiesConfigName);
-			RetryTimeConfig retryTimeConfig = priorityConfigService.findByServiceName(propertiesConfigName);
+			PropertiesConfigDto propertiesConfig = propertiesConfigService.getPropertiesConfig(configServiceName);
 			
 			if(retryTimeConfig != null) {
 				
@@ -99,12 +101,13 @@ public class BacklogManagerService{
 	        	
 				propertiesConfig.setBacklogManagerUnavailabilityErrorDate(LocalDateTime.now());
 
-				propertiesConfigService.update(propertiesConfig, propertiesConfigName);
+				propertiesConfigService.update(propertiesConfig, configServiceName);
+				retryConfigService.update(retryTimeConfig, configServiceName);
 	        }else if(indexCount == 0 && propertiesConfig.getBacklogManagerUnavailabilityErrorDate() == null) {
 	        	
 				propertiesConfig.setBacklogManagerUnavailabilityErrorDate(LocalDateTime.now());
 
-				propertiesConfigService.update(propertiesConfig, propertiesConfigName);
+				propertiesConfigService.update(propertiesConfig, configServiceName);
 	        }
 		}
 		

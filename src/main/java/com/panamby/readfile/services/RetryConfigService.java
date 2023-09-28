@@ -20,13 +20,13 @@ import lombok.extern.slf4j.Slf4j;
 @EnableCaching
 @Slf4j
 @Service
-public class PriorityConfigService {
+public class RetryConfigService {
 
 	@Autowired
 	private PropertiesConfigService propertiesConfigService;
 
-	@Value("${backlog-manager.properties-config.name}")
-	private String propertiesConfigName;
+	@Value("${backlog-manager.service-config.name}")
+	private String configServiceName;
 	
     //Persist in cache with key "serviceName"
     @Cacheable(value = RedisConstants.BACKLOG_MANAGER_RETRY_TIME_CONFIG_CACHE, key = "#serviceName")
@@ -59,6 +59,19 @@ public class PriorityConfigService {
 		
 		return retryTimeConfig;
 	}
+
+    @CachePut(value = RedisConstants.BACKLOG_MANAGER_RETRY_TIME_CONFIG_CACHE, key = "#retryTimeConfig.serviceName")
+	public RetryTimeConfig reset(RetryTimeConfig retryTimeConfig, String serviceName) {
+
+		log.debug(String.format("Starting retry time config reset. SERVICE_NAME [%s]", serviceName));
+
+		retryTimeConfig.setIndexCount(0);
+
+		log.trace(String.format("Retry time config reset finished. SERVICE_NAME [%s] - RETRY_TIME_CONFIG [%s]",
+				serviceName, retryTimeConfig));
+		
+		return retryTimeConfig;
+	}
     
     @CachePut(value = RedisConstants.BACKLOG_MANAGER_RETRY_TIME_CONFIG_CACHE, key = "#retryTimeConfig.serviceName")
 	public RetryTimeConfig verifyIndex(RetryTimeConfig retryTimeConfig, String serviceName) {
@@ -81,7 +94,7 @@ public class PriorityConfigService {
 
 		log.debug(String.format("Starting get Retry Time By Service Name [%s].", serviceName));
 		
-		PropertiesConfigDto propertiesConfig = propertiesConfigService.findByConfigName(propertiesConfigName);
+		PropertiesConfigDto propertiesConfig = propertiesConfigService.findByConfigName(configServiceName);
 		
 		if(propertiesConfig.getRetryTime() == null) {
 			

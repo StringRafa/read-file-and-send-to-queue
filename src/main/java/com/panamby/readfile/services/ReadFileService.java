@@ -52,10 +52,10 @@ public class ReadFileService {
 	private PropertiesConfigService propertiesConfigService;
 	
 	@Autowired
-	private PriorityConfigService priorityConfigService;
+	private RetryConfigService retryConfigService;
 
-	@Value("${backlog-manager.properties-config.name}")
-	private String propertiesConfigName;
+	@Value("${backlog-manager.service-config.name}")
+	private String configServiceName;
 
 	public String readFileAndSendQueue(MultipartFile multipartFile) {
 
@@ -204,11 +204,12 @@ public class ReadFileService {
 	private void consumer(SubscribeRequest subscribeRequest) {
 		
 		String transactionId = UUIDUtils.generateUUID();
+		SimpleMessageListenerContainer listenerEndpoint = (SimpleMessageListenerContainer) endpointRegistry.getListenerContainer("queueBacklogManagerRetry");
 		
 		int indexCount = 0;
 		Long retryTime = 0L;
-		PropertiesConfigDto propertiesConfig = propertiesConfigService.getPropertiesConfig(propertiesConfigName);
-		RetryTimeConfig retryTimeConfig = priorityConfigService.findByServiceName(propertiesConfigName);
+		PropertiesConfigDto propertiesConfig = propertiesConfigService.getPropertiesConfig(configServiceName);
+		RetryTimeConfig retryTimeConfig = retryConfigService.findByServiceName(configServiceName);
 		
 		if(retryTimeConfig != null) {
 			
@@ -225,7 +226,6 @@ public class ReadFileService {
 
         if(timeDifference != null && timeDifference <= retryTime) {
 			
-			SimpleMessageListenerContainer listenerEndpoint = (SimpleMessageListenerContainer) endpointRegistry.getListenerContainer("queueBacklogManagerRetry");
 			listenerEndpoint.stop();
 			log.debug("Stopping Retry Backlog Manager listener container.");
 			
@@ -241,8 +241,6 @@ public class ReadFileService {
 			System.out.println("=============================");
 			
 			backlogManagerService.sendSubscriber(subscribeRequest, transactionId);
-	        
-	        priorityConfigService.update(retryTimeConfig, propertiesConfigName);
 		}
 	}
 

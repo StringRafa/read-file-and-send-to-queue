@@ -26,6 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.google.gson.Gson;
 import com.panamby.readfile.consts.ConstantUtils;
 import com.panamby.readfile.consts.RabbitMQConstants;
+import com.panamby.readfile.exceptions.BacklogManagerTimeOutException;
 import com.panamby.readfile.exceptions.ReadFileException;
 import com.panamby.readfile.models.RetryTimeConfig;
 import com.panamby.readfile.models.dto.PropertiesConfigDto;
@@ -166,7 +167,7 @@ public class ReadFileService {
 
 		log.info(String.format("Started send Subscriber For Backlog Manager. SUBSCRIBE_REQUEST [%s] - TRANSACTION_ID [%s]", subscribeRequest, transactionId));
 		
-		SubscribeResponse subscriberResponse = backlogManagerService.sendSubscriber(subscribeRequest, transactionId);
+		SubscribeResponse subscriberResponse = sendRequestForBacklogManager(subscribeRequest, transactionId);
 
 		log.info(String.format("Send Subscriber For Backlog Manager finished. SUBSCRIBE_RESPONSE [%s] - TRANSACTION_ID [%s]", subscriberResponse, transactionId));		
 	}
@@ -202,6 +203,8 @@ public class ReadFileService {
 	
 	@RabbitListener(id = "queueBacklogManagerRetry", queues = RabbitMQConstants.RETRY_QUEUE_FOR_BACKLOG_MANAGER, autoStartup = "false")
 	private void consumer(SubscribeRequest subscribeRequest) {
+
+		log.info(String.format("Started queue consumer. QUEUE [%s]", RabbitMQConstants.RETRY_QUEUE_FOR_BACKLOG_MANAGER));
 		
 		String transactionId = UUIDUtils.generateUUID();
 		SimpleMessageListenerContainer listenerEndpoint = (SimpleMessageListenerContainer) endpointRegistry.getListenerContainer("queueBacklogManagerRetry");
@@ -240,8 +243,60 @@ public class ReadFileService {
 			System.out.println(subscribeRequest);
 			System.out.println("=============================");
 			
-			backlogManagerService.sendSubscriber(subscribeRequest, transactionId);
+			sendRequestForBacklogManager(subscribeRequest, transactionId);
 		}
+
+		log.info(String.format("Queue consumer finished. QUEUE [%s]", RabbitMQConstants.RETRY_QUEUE_FOR_BACKLOG_MANAGER));
+	}
+
+	private SubscribeResponse sendRequestForBacklogManager(SubscribeRequest subscribeRequest, String transactionId) {
+
+		log.info(String.format("Started send Request For Backlog-Manager. SUBSCRIBE_REQUEST [%s] - TRANSACTION_ID", subscribeRequest, transactionId));
+		
+		SubscribeResponse subscriberResponse = null;
+		RetryTimeConfig retryTimeConfig = retryConfigService.findByServiceName(configServiceName);
+		
+		try {
+			
+			subscriberResponse = backlogManagerService.sendSubscriber(subscribeRequest, transactionId);
+			retryConfigService.resetIndex(retryTimeConfig, configServiceName); 
+		} catch (BacklogManagerTimeOutException e) {
+			
+			int indexCount = 0;
+			Long retryTime = 0L;
+			PropertiesConfigDto propertiesConfig = propertiesConfigService.getPropertiesConfig(configServiceName);
+			
+			if(retryTimeConfig != null) {
+				
+				indexCount = retryTimeConfig.getIndexCount();
+			}
+			
+	        Long timeDifference = null;
+			
+	        if(propertiesConfig != null && propertiesConfig.getBacklogManagerUnavailabilityErrorDate() != null) {
+
+	            timeDifference = Duration.between(propertiesConfig.getBacklogManagerUnavailabilityErrorDate(), LocalDateTime.now()).getSeconds();
+	            retryTime = propertiesConfig.getRetryTime().get(indexCount);
+	        }
+	        
+	        if(timeDifference != null && timeDifference >= retryTime) {
+	        	
+				propertiesConfig.setBacklogManagerUnavailabilityErrorDate(LocalDateTime.now());
+
+				propertiesConfigService.update(propertiesConfig, configServiceName);
+				retryConfigService.update(retryTimeConfig, configServiceName);
+	        }else if(propertiesConfig.getBacklogManagerUnavailabilityErrorDate() == null) {
+	        	
+				propertiesConfig.setBacklogManagerUnavailabilityErrorDate(LocalDateTime.now());
+				propertiesConfigService.update(propertiesConfig, configServiceName);
+	        }
+			
+	        rabbitMQService.sendMessageNoJson(RabbitMQConstants.QUEUE_AUDIT, e);
+		}
+
+		log.info(String.format("Send Request For Backlog-Manager finished. SUBSCRIBE_REQUEST [%s] - TRANSACTION_ID", subscribeRequest, transactionId));
+		
+		return subscriberResponse;
 	}
 
 	@Scheduled(fixedRateString = "${backlog-manager.retry-request.fixedRate.in.milliseconds}")

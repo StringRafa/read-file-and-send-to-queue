@@ -3,6 +3,7 @@ package com.panamby.readfile.services;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.EnableCaching;
@@ -29,6 +30,9 @@ public class PropertiesConfigService  {
 	
 	@Autowired
 	private PropertiesConfigRepository propertiesConfigRepository;
+
+	@Value("${backlog-manager.service-config.name}")
+	private String configServiceName;
 	
 	@CachePut(value = RedisConstants.READ_FILE_PROPERTIES_CONFIG_CACHE, key = "#propertiesConfigDto.configName")
 	public PropertiesConfigDto create(PropertiesConfigDto propertiesConfigDto) {
@@ -183,7 +187,7 @@ public class PropertiesConfigService  {
 		
 		if(propertiesConfigName == null) {
 			
-			log.error(String.format("Channel Config not found. CONFIG_NAME_ID [%s]", configNameId));
+			log.error(String.format("Properties Config not found. CONFIG_NAME_ID [%s]", configNameId));
 			
 			throw new PropertiesConfigNotFoundException(String.format("Properties Config not found. CONFIG_NAME_ID [%s]", configNameId));
 		}
@@ -197,11 +201,9 @@ public class PropertiesConfigService  {
 		
 		log.trace(String.format("Starting verify Properties config. PROPERTIES_CONFIG [%s]", propertiesConfig));
 		
-		if(propertiesConfig.getRetryTime() == null || propertiesConfig.getRetryTime().isEmpty()) {
+		if(propertiesConfig == null || propertiesConfig.getRetryTime() == null || propertiesConfig.getRetryTime().isEmpty()) {
 			
 			log.error(String.format("Properties Config not found. CONFIG_NAME_ID [%s]", propertiesConfig.getConfigName()));
-			
-			throw new PropertiesConfigNotFoundException(String.format("Properties Config not found. CONFIG_NAME_ID [%s].", propertiesConfig.getConfigName()));			
 		}		
 	}
 	

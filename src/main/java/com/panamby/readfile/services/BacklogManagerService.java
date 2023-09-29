@@ -1,7 +1,6 @@
 package com.panamby.readfile.services;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,8 +10,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
 
 import com.panamby.readfile.consts.RabbitMQConstants;
-import com.panamby.readfile.models.RetryTimeConfig;
-import com.panamby.readfile.models.dto.PropertiesConfigDto;
+import com.panamby.readfile.exceptions.BacklogManagerTimeOutException;
 import com.panamby.readfile.models.dto.SubscribeRequest;
 import com.panamby.readfile.models.dto.SubscribeResponse;
 
@@ -29,12 +27,6 @@ public class BacklogManagerService{
 	
 	@Autowired
 	private RabbitMQService rabbitMQService;
-	
-	@Autowired
-	private PropertiesConfigService propertiesConfigService;
-	
-	@Autowired
-	private RetryConfigService retryConfigService;
 
 	@Value("${backlog-manager.service-config.name}")
 	private String configServiceName;
@@ -54,8 +46,6 @@ public class BacklogManagerService{
 	public SubscribeResponse sendSubscriber(SubscribeRequest subscribeRequest, String transactionId) {
 		
 		log.trace(String.format("Sending request to Backlog Manager. ENDPOINT [%s] - SUBSCRIBE_REQUEST [%s] - TRANSACTION_ID [%s]", endpointBacklogManager, subscribeRequest, transactionId));
-
-		RetryTimeConfig retryTimeConfig = retryConfigService.findByServiceName(configServiceName);
 		
 		Mono<SubscribeResponse> response = webClientBacklogManager
 				.method(HttpMethod.POST)
@@ -73,42 +63,14 @@ public class BacklogManagerService{
 		try{
 
 			subscribeResponse = response.block(Duration.ofMillis(backlogManagerTimeout));
-			retryConfigService.reset(retryTimeConfig, configServiceName);  
 		}catch(IllegalStateException | WebClientRequestException ex){
 
 			log.error(String.format("Backlog Manager response time limit [%s]. SUBSCRIBE_REQUEST [%s]", ex.getMessage(), subscribeRequest));
 			
 			rabbitMQService.sendMessageNoJson(RabbitMQConstants.RETRY_QUEUE_FOR_BACKLOG_MANAGER, subscribeRequest);
-			
-			int indexCount = 0;
-			Long retryTime = 0L;
-			PropertiesConfigDto propertiesConfig = propertiesConfigService.getPropertiesConfig(configServiceName);
-			
-			if(retryTimeConfig != null) {
-				
-				indexCount = retryTimeConfig.getIndexCount();
-			}
-			
-	        Long timeDifference = null;
-			
-	        if(propertiesConfig != null && propertiesConfig.getBacklogManagerUnavailabilityErrorDate() != null) {
-
-	            timeDifference = Duration.between(propertiesConfig.getBacklogManagerUnavailabilityErrorDate(), LocalDateTime.now()).getSeconds();
-	            retryTime = propertiesConfig.getRetryTime().get(indexCount);
-	        }
 	        
-	        if(timeDifference != null && timeDifference >= retryTime) {
-	        	
-				propertiesConfig.setBacklogManagerUnavailabilityErrorDate(LocalDateTime.now());
-
-				propertiesConfigService.update(propertiesConfig, configServiceName);
-				retryConfigService.update(retryTimeConfig, configServiceName);
-	        }else if(indexCount == 0 && propertiesConfig.getBacklogManagerUnavailabilityErrorDate() == null) {
-	        	
-				propertiesConfig.setBacklogManagerUnavailabilityErrorDate(LocalDateTime.now());
-
-				propertiesConfigService.update(propertiesConfig, configServiceName);
-	        }
+	        throw new BacklogManagerTimeOutException(String.format("Backlog Manager response time limit. [%s]", ex.getMessage()),
+	        		transactionId, subscribeRequest.getId(), subscribeRequest.getProduct());
 		}
 		
 		log.trace(String.format("Response of Backlog Manager. ENDPOINT [%s]  SUBSCRIBE_RESPONSE [%s]", endpointBacklogManager, subscribeResponse));

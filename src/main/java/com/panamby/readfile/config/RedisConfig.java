@@ -18,6 +18,12 @@ public class RedisConfig {
 	@Value("${retry.service.cache.redis.ttl.minutes}")
 	private String retryServiceCacheTTL;
 	
+	@Value("${properties-config.service.cache.redis.ttl.minutes}")
+	private String propertiesConfigServiceCacheTTL;
+	
+	@Value("${backlog-manager.retry.service.cache.redis.ttl.minutes}")
+	private String backlogManagerServiceCacheTTL;
+	
     @Bean
     public RedisCacheConfiguration cacheConfiguration() {
         return RedisCacheConfiguration
@@ -34,6 +40,18 @@ public class RedisConfig {
                         RedisCacheConfiguration
                         	    .defaultCacheConfig()
                         	    .entryTtl(Duration.ofMinutes(Integer.parseInt(retryServiceCacheTTL)))
+                                .disableCachingNullValues()
+                                .serializeValuesWith(SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer())))
+                .withCacheConfiguration(RedisConstants.READ_FILE_PROPERTIES_CONFIG_CACHE,
+                        RedisCacheConfiguration
+                        	    .defaultCacheConfig()
+                        	    .entryTtl(Duration.ofMinutes(Integer.parseInt(propertiesConfigServiceCacheTTL)))
+                                .disableCachingNullValues()
+                                .serializeValuesWith(SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer())))
+                .withCacheConfiguration(RedisConstants.BACKLOG_MANAGER_RETRY_TIME_CONFIG_CACHE,
+                        RedisCacheConfiguration
+                        	    .defaultCacheConfig()
+                        	    .entryTtl(Duration.ofMinutes(Integer.parseInt(backlogManagerServiceCacheTTL)))
                                 .disableCachingNullValues()
                                 .serializeValuesWith(SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer())));
     }

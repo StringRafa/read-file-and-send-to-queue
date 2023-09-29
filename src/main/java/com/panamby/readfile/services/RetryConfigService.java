@@ -61,7 +61,7 @@ public class RetryConfigService {
 	}
 
     @CachePut(value = RedisConstants.BACKLOG_MANAGER_RETRY_TIME_CONFIG_CACHE, key = "#retryTimeConfig.serviceName")
-	public RetryTimeConfig reset(RetryTimeConfig retryTimeConfig, String serviceName) {
+	public RetryTimeConfig resetIndex(RetryTimeConfig retryTimeConfig, String serviceName) {
 
 		log.debug(String.format("Starting retry time config reset. SERVICE_NAME [%s]", serviceName));
 

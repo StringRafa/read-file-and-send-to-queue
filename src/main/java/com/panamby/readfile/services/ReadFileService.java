@@ -291,7 +291,7 @@ public class ReadFileService {
 				propertiesConfigService.update(propertiesConfig, configServiceName);
 	        }
 			
-	        rabbitMQService.sendMessageNoJson(RabbitMQConstants.QUEUE_AUDIT, e);
+	        rabbitMQService.sendMessage(RabbitMQConstants.QUEUE_AUDIT, e);
 		}
 
 		log.info(String.format("Send Request For Backlog-Manager finished. SUBSCRIBE_REQUEST [%s] - TRANSACTION_ID", subscribeRequest, transactionId));
